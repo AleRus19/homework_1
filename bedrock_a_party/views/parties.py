@@ -1,5 +1,5 @@
 from flakon import JsonBlueprint
-from flask import abort, jsonify, request
+from flask import abort, json, jsonify, request
 
 
 from bedrock_a_party.classes.party import CannotPartyAloneError, ItemAlreadyInsertedByUser, NotExistingFoodError, NotInvitedGuestError, Party
@@ -21,8 +21,7 @@ def all_parties():
             # save in result the party identifier
             result = create_party(request)
         except CannotPartyAloneError as e:
-            abort(400, e.__str__()) # error 400: Bad Request, i.e wrong parameters
-
+            result = jsonify({'msg': e.__str__()}), 400 # error 400: Bad Request
     elif request.method == 'GET':
 
         # retrieve all scheduled parties
@@ -36,6 +35,7 @@ def all_parties():
 def loaded_parties():
 
     # return the number of parties currently loaded in the system
+    
     return get_number_loaded_parties()
 
 
@@ -56,7 +56,7 @@ def single_party(id):
     elif 'DELETE' == request.method:
         # delete the party identified by <id>
         _LOADED_PARTIES.pop(str(id))
-        result = jsonify({"msg": "Party deleted!"})
+        result = jsonify({'msg': "Party deleted!"})
         
     return result
 
@@ -72,7 +72,7 @@ def get_foodlist(id):
 
     if 'GET' == request.method:
         # retrieve food-list of the party identified by <id>
-        result = jsonify({"foodlist":_LOADED_PARTIES[str(id)].get_food_list().serialize()})
+        result = jsonify({'foodlist':_LOADED_PARTIES[str(id)].get_food_list().serialize()})
 
     return result
 
@@ -93,19 +93,20 @@ def edit_foodlist(id, user, item):
         # add the <item> brought by <user> to the food-list of the party <id>
         try:
             party.add_to_food_list(item, user)
-            result = jsonify({"food":str(item), "user":str(user)})
+            result = jsonify({'food':str(item), 'user':str(user)})
         except NotInvitedGuestError as e1:
-            abort(401, e1.__str__())
+            result = jsonify({'msg': e1.__str__()}), 401 # error 401: 401 Unauthorized Access
         except ItemAlreadyInsertedByUser as e2:
-            abort(400, e2.__str__())
-
+            result = jsonify({'msg': e2.__str__()}), 400 # error 400: Bad Request
+    
     if 'DELETE' == request.method:
         # remove the given <item> brought by <user> from the food-list of the party <id>
         try:
-            _LOADED_PARTIES[str(id)].remove_from_food_list(item, user)
-            result = jsonify({"msg":"Food deleted!"})
-        except NotExistingFoodError as e3:
-            abort(400, e3.__str__())
+            party.remove_from_food_list(item, user)
+            result = jsonify({'msg':"Food deleted!"})
+        except NotExistingFoodError as e: 
+            result = jsonify({'msg': e.__str__()}), 400 # error 400: Bad Request
+            
     return result
 
 
