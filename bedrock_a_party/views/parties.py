@@ -1,5 +1,5 @@
 from flakon import JsonBlueprint
-from flask import abort, json, jsonify, request
+from flask import abort, jsonify, request
 
 
 from bedrock_a_party.classes.party import CannotPartyAloneError, ItemAlreadyInsertedByUser, NotExistingFoodError, NotInvitedGuestError, Party
@@ -20,8 +20,10 @@ def all_parties():
         try:
             # save in result the party identifier
             result = create_party(request)
+
         except CannotPartyAloneError as e:
             result = jsonify({'msg': e.__str__()}), 400 # error 400: Bad Request
+
     elif request.method == 'GET':
 
         # retrieve all scheduled parties
@@ -72,7 +74,7 @@ def get_foodlist(id):
 
     if 'GET' == request.method:
         # retrieve food-list of the party identified by <id>
-        result = jsonify({'foodlist':_LOADED_PARTIES[str(id)].get_food_list().serialize()})
+        result = jsonify(foodlist=_LOADED_PARTIES[str(id)].get_food_list().serialize())
 
     return result
 
@@ -90,20 +92,25 @@ def edit_foodlist(id, user, item):
     result = ""
 
     if 'POST' == request.method:
+
         # add the <item> brought by <user> to the food-list of the party <id>
         try:
-            party.add_to_food_list(item, user)
-            result = jsonify({'food':str(item), 'user':str(user)})
+            # save in result the <food, user> inserted in the foodlist of the party <id>
+            result = jsonify(party.add_to_food_list(item, user).serialize())
+
         except NotInvitedGuestError as e1:
             result = jsonify({'msg': e1.__str__()}), 401 # error 401: 401 Unauthorized Access
+
         except ItemAlreadyInsertedByUser as e2:
             result = jsonify({'msg': e2.__str__()}), 400 # error 400: Bad Request
     
     if 'DELETE' == request.method:
+
         # remove the given <item> brought by <user> from the food-list of the party <id>
         try:
             party.remove_from_food_list(item, user)
             result = jsonify({'msg':"Food deleted!"})
+            
         except NotExistingFoodError as e: 
             result = jsonify({'msg': e.__str__()}), 400 # error 400: Bad Request
             
@@ -152,4 +159,4 @@ def exists_party(_id):
 def get_number_loaded_parties():
     global _LOADED_PARTIES
     
-    return jsonify({'loaded_parties': len(_LOADED_PARTIES)})
+    return jsonify(loaded_parties=len(_LOADED_PARTIES))
